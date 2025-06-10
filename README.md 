@@ -1,0 +1,61 @@
+
+控制gin的启动、停止、重启。
+
+# 主要功能
+
+    支持重启时修改配置：通过Restart方法的newConfig参数，可以在重启时修改监听地址、端口和其他服务器配置。
+
+    线程安全：使用sync.Mutex保护对共享状态的访问，确保并发安全。
+
+    更清晰的控制流程：将控制逻辑集中到controlLoop方法中，使代码更易于理解和维护。
+
+    更灵活的引擎管理：可以在重启时选择是否更换Gin引擎实例。
+
+    更好的日志信息：包含更多上下文信息，如监听地址变更等。
+
+    更健壮的错误处理：在关键操作中添加了更多的错误检查和日志记录。
+
+    更合理的资源管理：确保所有goroutine都能被正确等待和清理。
+
+# 实例
+package main
+
+import (
+	"time"
+
+	"github.com/gin-gonic/gin"
+	"yourpackage/gincontroller"
+)
+
+func main() {
+	// 初始化配置
+	config := graceful.Config{
+		Addr:         ":8080", // 监听所有接口的8080端口
+		ReadTimeout:  15 * time.Second,
+		WriteTimeout: 15 * time.Second,
+		IdleTimeout:  30 * time.Second,
+	}
+
+	// 创建Gin控制器
+	gc := graceful.New(config)
+
+	// 创建Gin引擎
+	router := gin.Default()
+	router.GET("/", func(c *gin.Context) {
+		c.String(200, "Hello, World!")
+	})
+
+	// 启动服务
+	gc.Start(router)
+
+	// 模拟运行一段时间后重启
+	time.Sleep(10 * time.Second)
+
+	// 重启服务并修改端口为8081
+	newConfig := config
+	newConfig.Addr = ":8081"
+	gc.Restart(&newConfig, nil) // 保持原有引擎，只修改配置
+
+	// 让服务继续运行
+	select {}
+}
