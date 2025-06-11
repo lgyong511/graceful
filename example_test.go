@@ -37,6 +37,16 @@ func TestGracefulServer(t *testing.T) {
 	newConfig.Addr = ":8081"
 	gc.Restart(&newConfig, nil) // 保持原有引擎，只修改配置
 
+	// 模拟运行一段时间后重启
+	time.Sleep(10 * time.Second)
+
+	newConfig.Addr = ":2580"
+	gc.Restart(&newConfig, nil)
+
+	// 模拟运行一段时间后停止
+	time.Sleep(10 * time.Second)
+	gc.Stop()
+
 	// 让服务继续运行
 	select {}
 }

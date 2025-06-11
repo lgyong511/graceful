@@ -45,10 +45,10 @@ const (
 )
 
 // New 创建新的GinController实例
-func New(initialConfig Config) *GinController {
+func New(Config Config) *GinController {
 	gc := &GinController{
 		sig:    make(chan controlSignal, 1),
-		config: initialConfig,
+		config: Config,
 	}
 
 	// 启动控制循环
