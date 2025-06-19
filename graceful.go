@@ -17,22 +17,14 @@ type GinController struct {
 	srv    *http.Server       // HTTP服务器实例
 	sig    chan controlSignal // 控制信号通道
 	wg     sync.WaitGroup     // 用于等待所有goroutine完成
-	config Config             // 服务器配置
+	addr   string             // 端口
 	engine *gin.Engine        // gin引擎实例
-}
-
-// Config 服务器配置
-type Config struct {
-	Addr         string        // 监听地址，格式为"host:port"
-	ReadTimeout  time.Duration // 读取超时
-	WriteTimeout time.Duration // 写入超时
-	IdleTimeout  time.Duration // 空闲超时
 }
 
 // controlSignal 控制信号
 type controlSignal struct {
 	action actionType  // 动作类型
-	config *Config     // 可选的配置更新(用于重启时修改配置)
+	addr   string      // 可选的配置更新(用于重启时修改配置)
 	engine *gin.Engine // 可选的引擎更新(用于重启时更换引擎)
 }
 
@@ -45,10 +37,10 @@ const (
 )
 
 // New 创建新的GinController实例
-func New(Config Config) *GinController {
+func New(addr string) *GinController {
 	gc := &GinController{
-		sig:    make(chan controlSignal, 1),
-		config: Config,
+		sig:  make(chan controlSignal, 1),
+		addr: addr,
 	}
 
 	// 启动控制循环
@@ -72,10 +64,10 @@ func (gc *GinController) Stop() {
 }
 
 // Restart 重启服务，可选的更新配置和引擎
-func (gc *GinController) Restart(newConfig *Config, newEngine *gin.Engine) {
+func (gc *GinController) Restart(addr string, newEngine *gin.Engine) {
 	gc.mu.Lock()
-	if newConfig != nil {
-		gc.config = *newConfig
+	if len(addr) != 0 {
+		gc.addr = addr
 	}
 	if newEngine != nil {
 		gc.engine = newEngine
@@ -84,7 +76,7 @@ func (gc *GinController) Restart(newConfig *Config, newEngine *gin.Engine) {
 
 	gc.sig <- controlSignal{
 		action: restartAction,
-		config: newConfig,
+		addr:   addr,
 		engine: newEngine,
 	}
 }
@@ -125,17 +117,17 @@ func (gc *GinController) startServer() {
 	}
 
 	gc.srv = &http.Server{
-		Addr:         gc.config.Addr,
+		Addr:         gc.addr,
 		Handler:      gc.engine,
-		ReadTimeout:  gc.config.ReadTimeout,
-		WriteTimeout: gc.config.WriteTimeout,
-		IdleTimeout:  gc.config.IdleTimeout,
+		ReadTimeout:  15 * time.Second,
+		WriteTimeout: 15 * time.Second,
+		IdleTimeout:  30 * time.Second,
 	}
 
 	gc.wg.Add(1)
 	go func() {
 		defer gc.wg.Done()
-		logrus.Infof("服务启动，监听地址: %s", gc.config.Addr)
+		logrus.Infof("服务启动，监听地址: %s", gc.addr)
 		if err := gc.srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			logrus.WithError(err).Error("服务启动失败")
 			os.Exit(1)
@@ -191,17 +183,17 @@ func (gc *GinController) restartServer(ctx context.Context) {
 
 	// 启动新实例
 	gc.srv = &http.Server{
-		Addr:         gc.config.Addr,
+		Addr:         gc.addr,
 		Handler:      gc.engine,
-		ReadTimeout:  gc.config.ReadTimeout,
-		WriteTimeout: gc.config.WriteTimeout,
-		IdleTimeout:  gc.config.IdleTimeout,
+		ReadTimeout:  15 * time.Second,
+		WriteTimeout: 15 * time.Second,
+		IdleTimeout:  30 * time.Second,
 	}
 
 	gc.wg.Add(1)
 	go func() {
 		defer gc.wg.Done()
-		logrus.Infof("服务重启完成，监听地址: %s", gc.config.Addr)
+		logrus.Infof("服务重启完成，监听地址: %s", gc.addr)
 		if err := gc.srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			logrus.WithError(err).Error("服务重启失败")
 			os.Exit(1)

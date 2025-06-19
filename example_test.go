@@ -9,16 +9,9 @@ import (
 )
 
 func TestGracefulServer(t *testing.T) {
-	// 初始化配置
-	config := graceful.Config{
-		Addr:         ":8080", // 监听所有接口的8080端口
-		ReadTimeout:  15 * time.Second,
-		WriteTimeout: 15 * time.Second,
-		IdleTimeout:  30 * time.Second,
-	}
 
 	// 创建Gin控制器
-	gc := graceful.New(config)
+	gc := graceful.New(":8080")
 
 	// 创建Gin引擎
 	router := gin.Default()
@@ -33,15 +26,12 @@ func TestGracefulServer(t *testing.T) {
 	time.Sleep(10 * time.Second)
 
 	// 重启服务并修改端口为8081
-	newConfig := config
-	newConfig.Addr = ":8081"
-	gc.Restart(&newConfig, nil) // 保持原有引擎，只修改配置
+	gc.Restart(":8081", nil) // 保持原有引擎，只修改配置
 
 	// 模拟运行一段时间后重启
 	time.Sleep(10 * time.Second)
 
-	newConfig.Addr = ":2580"
-	gc.Restart(&newConfig, nil)
+	gc.Restart(":2580", nil)
 
 	// 模拟运行一段时间后停止
 	time.Sleep(10 * time.Second)
