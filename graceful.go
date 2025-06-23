@@ -81,6 +81,11 @@ func (gc *GinController) Restart(addr string, newEngine *gin.Engine) {
 	}
 }
 
+// GetAddr 获取监听的端口号
+func (gc *GinController) GetAddr() string {
+	return gc.addr
+}
+
 // controlLoop 控制循环，处理所有控制信号
 func (gc *GinController) controlLoop() {
 	gc.wg.Add(1)
